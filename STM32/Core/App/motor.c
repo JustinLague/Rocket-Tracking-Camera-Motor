@@ -34,7 +34,7 @@ void tsk_motor_control() {
 	while(speed_x <= 3000) {
 		update_motor_x(speed_x);
 
-		speed_x +=10;
+		speed_x +=45;
 		osDelay(5);
 	}
 
