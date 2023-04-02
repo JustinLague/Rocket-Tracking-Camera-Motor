@@ -36,6 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+enum Motor_t {Motor_x = 0, Motor_y = 1, Motor_zoom = 2};
 
 /* USER CODE END ET */
 
@@ -49,11 +50,14 @@ extern "C" {
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+void start_motor(enum Motor_t motor);
+void stop_motor(enum Motor_t motor);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
