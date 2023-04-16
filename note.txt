@@ -1,0 +1,1 @@
+Pour debug le code stm32 : putty load le setting smt32 et apres tu ecris sur le uart2
