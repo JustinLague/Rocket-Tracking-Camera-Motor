@@ -1,12 +1,12 @@
 /*
- * motor.h
+ * i2c_task.h
  *
- *  Created on: Mar 31, 2023
+ *  Created on: Apr 5, 2023
  *      Author: Justin
  */
 
-#ifndef APP_MOTOR_H_
-#define APP_MOTOR_H_
+#ifndef APP_TSK_I2C_H_
+#define APP_TSK_I2C_H_
 
 /******************************************************************************/
 /*                             Includes	                                      */
@@ -16,19 +16,15 @@
 /*                             Typedef prototype                              */
 /******************************************************************************/
 typedef struct {
-   uint32_t arr;
-   uint32_t psc;
-} Timer_def_t;
+	float error_x;
+	float error_y;
+	float error_zoom;
+} motor_error_t;
+
 
 /******************************************************************************/
 /*                             Function prototype                             */
 /******************************************************************************/
-void tsk_motor_control();
-void update_motor_x();
-void update_motor_y();
-void update_motor_zoom();
-void change_timer_def_for_freq(uint32_t freq, Timer_def_t* timer_def);
-void change_speed(Timer_def_t* timer_def, uint32_t speed);
+void tsk_i2c();
 
-
-#endif /* APP_MOTOR_H_ */
+#endif /* APP_TSK_I2C_H_ */

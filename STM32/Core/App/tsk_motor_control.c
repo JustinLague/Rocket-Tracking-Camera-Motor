@@ -1,5 +1,5 @@
 /*
- * motor.c
+ * tsk_motor_control.c
  *
  *  Created on: Mar 31, 2023
  *      Author: Justin
@@ -9,16 +9,21 @@
 /*                             Includes	                                      */
 /******************************************************************************/
 #include "main.h"
-#include "motor.h"
+#include "tsk_motor_control.h"
 #include <math.h>
+#include "cmsis_os2.h"
+#include <string.h>
 
 /******************************************************************************/
-/*                             Function definition                            */
+/*                             Function implementation                        */
 /******************************************************************************/
 
 Timer_def_t timer_x;
 Timer_def_t timer_y;
 Timer_def_t timer_zoom;
+
+
+uint8_t speed[12];
 
 void tsk_motor_control() {
 
@@ -30,48 +35,59 @@ void tsk_motor_control() {
 	uint32_t speed_y = 60;
 	uint32_t speed_zoom = 60;
 
-
-	while(speed_x <= 3000) {
-		update_motor_x(speed_x);
-
-		speed_x +=45;
-		osDelay(5);
-	}
-
 	update_motor_x(speed_x);
+	update_motor_y(speed_y);
+	update_motor_zoom(speed_zoom);
 
-	osDelay(1000);
+	uint8_t go_up = 1;
 
-	while(speed_x >= 60) {
+	while(1){
+
+		if(go_up) {
+			speed_x += 5;
+		} else {
+			speed_x -= 1;
+		}
+		if(speed_x >= 3500 && go_up) {
+			go_up = 0;
+		}
+		if (!go_up && speed_x <= 60 ){
+			go_up = 1;
+		}
+
 		update_motor_x(speed_x);
-
-		speed_x -=10;
-		osDelay(5);
+		update_motor_y(speed_y);
+		update_motor_zoom(speed_zoom);
+		osDelay(100);
 	}
-
-	update_motor_x(speed_x);
 }
 
 
 void update_motor_x(uint32_t speed) {
 	change_speed(&timer_x, speed);
-	TIM3->ARR = timer_x.arr;
-	TIM3->PSC = timer_x.psc;
-	TIM3->CCR2 = (uint32_t) floor(timer_x.arr / 2);
+	osKernelLock();
+		TIM3->ARR = timer_x.arr;
+		TIM3->PSC = timer_x.psc;
+		TIM3->CCR2 = (uint32_t) floor(timer_x.arr / 2);
+	osKernelUnlock();
 }
 
 void update_motor_y(uint32_t speed) {
 	change_speed(&timer_y, speed);
-	TIM4->ARR = timer_y.arr;
-	TIM4->PSC = timer_y.psc;
-	TIM4->CCR3 = (uint32_t) floor(timer_y.arr / 2);
+	osKernelLock();
+		TIM4->ARR = timer_y.arr;
+		TIM4->PSC = timer_y.psc;
+		TIM4->CCR3 = (uint32_t) floor(timer_y.arr / 2);
+	osKernelUnlock();
 }
 
 void update_motor_zoom(uint32_t speed) {
 	change_speed(&timer_zoom, speed);
-	TIM8->ARR = timer_zoom.arr;
-	TIM8->PSC = timer_zoom.psc;
-	TIM8->CCR4 = (uint32_t) floor(timer_zoom.arr / 2);
+	osKernelLock();
+		TIM8->ARR = timer_zoom.arr;
+		TIM8->PSC = timer_zoom.psc;
+		TIM8->CCR4 = (uint32_t) floor(timer_zoom.arr / 2);
+	osKernelUnlock();
 }
 
 void change_timer_def_for_freq(uint32_t desired_freq, Timer_def_t* timer_def) {

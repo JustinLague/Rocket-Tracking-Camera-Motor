@@ -58,6 +58,9 @@ void Error_Handler(void);
 /* USER CODE BEGIN EFP */
 void start_motor(enum Motor_t motor);
 void stop_motor(enum Motor_t motor);
+
+I2C_HandleTypeDef* get_hi2cl();
+UART_HandleTypeDef* get_huart2();
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
