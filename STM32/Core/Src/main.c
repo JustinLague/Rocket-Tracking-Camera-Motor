@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -72,6 +71,8 @@ const osThreadAttr_t i2c_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
+/* Definitions for Change_speed_mutex */
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -173,6 +174,8 @@ int main(void)
 
   /* Init scheduler */
   osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of Change_speed_mutex */
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */

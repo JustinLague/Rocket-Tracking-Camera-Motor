@@ -17,14 +17,14 @@
 /******************************************************************************/
 /*                             Global variable                                */
 /******************************************************************************/
-union float_tag {
-	uint8_t b[4];
-    float fval;
-} ft;
+motor_speed_t motor_speed;
 
-motor_error_t motor_error;
+osMutexId_t Change_speed_mutexHandle;
+const osMutexAttr_t Change_speed_mutex_attributes = {
+  .name = "Change_speed_mutex"
+};
 
-uint8_t aRxBuffer[5];
+uint8_t aRxBuffer[6];
 uint8_t aTxBuffer[5];
 
 #define RXBUFFERSIZE                      (COUNTOF(aRxBuffer))
@@ -40,6 +40,12 @@ uint8_t debug_buf[12];
 /******************************************************************************/
 
 void tsk_i2c() {
+	Change_speed_mutexHandle = osMutexNew(&Change_speed_mutex_attributes);
+
+	motor_speed.speed_x.uint16Val = 0;
+	motor_speed.speed_y.uint16Val = 0;
+	motor_speed.speed_zoom.uint16Val = 0;
+
 	if(HAL_I2C_EnableListen_IT(get_hi2cl()) != HAL_OK) {
 		Error_Handler();
 	}
@@ -49,20 +55,52 @@ void tsk_i2c() {
 	}
 }
 
-void HAL_I2C_SlaveTxCpltCallback(I2C_HandleTypeDef *I2cHandle)
-{
-	//strcpy((char*) debug_buf, "SlaveTxCptl\r\n");
-	//HAL_UART_Transmit(get_huart2(), debug_buf, strlen((char*)debug_buf), HAL_MAX_DELAY);
+uint16_t get_speed_x() {
+	uint16_t speed = 0;
+	osMutexAcquire(Change_speed_mutexHandle, 0);
+
+		speed = motor_speed.speed_x.uint16Val;
+
+	osMutexRelease(Change_speed_mutexHandle);
+
+	return speed;
+}
+
+uint16_t get_speed_y() {
+	uint16_t speed = 0;
+	osMutexAcquire(Change_speed_mutexHandle, 0);
+
+		speed = motor_speed.speed_y.uint16Val;
+
+	osMutexRelease(Change_speed_mutexHandle);
+
+	return speed;
+}
+
+uint16_t get_speed_zoom() {
+	uint16_t speed = 0;
+	osMutexAcquire(Change_speed_mutexHandle, 0);
+
+		speed = motor_speed.speed_zoom.uint16Val;
+
+	osMutexRelease(Change_speed_mutexHandle);
+
+	return speed;
 }
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
 {
-	ft.b[0] = aRxBuffer[1];
-	ft.b[1] = aRxBuffer[2];
-	ft.b[2] = aRxBuffer[3];
-	ft.b[3] = aRxBuffer[4];
-
-
+	//add mutex
+	if(aRxBuffer[0] == 0x10) {
+		osMutexAcquire(Change_speed_mutexHandle, 0);
+			motor_speed.speed_x.uint8Val[0] = aRxBuffer[1];
+			motor_speed.speed_x.uint8Val[1] = aRxBuffer[2];
+			motor_speed.speed_y.uint8Val[0] = aRxBuffer[3];
+			motor_speed.speed_y.uint8Val[1] = aRxBuffer[4];
+			motor_speed.speed_zoom.uint8Val[0] = aRxBuffer[5];
+			motor_speed.speed_zoom.uint8Val[1] = aRxBuffer[6];
+		osMutexRelease(Change_speed_mutexHandle);
+	}
 	//strcpy((char*) debug_buf, "SlaveRxCptl\r\n");
 	//HAL_UART_Transmit(get_huart2(), debug_buf, strlen((char*)debug_buf), HAL_MAX_DELAY);
 }

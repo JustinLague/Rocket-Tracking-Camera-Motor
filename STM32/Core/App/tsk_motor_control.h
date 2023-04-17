@@ -24,11 +24,11 @@ typedef struct {
 /*                             Function prototype                             */
 /******************************************************************************/
 void tsk_motor_control();
-void update_motor_x(uint32_t speed);
-void update_motor_y(uint32_t speed);
-void update_motor_zoom(uint32_t speed);
+void update_motor_x();
+void update_motor_y();
+void update_motor_zoom();
 void change_timer_def_for_freq(uint32_t freq, Timer_def_t* timer_def);
-void change_speed(Timer_def_t* timer_def, uint32_t speed);
+void change_speed(Timer_def_t* timer_def, uint16_t speed);
 
 
 #endif /* APP_TSK_MOTOR_CONTROL_H_ */

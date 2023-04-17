@@ -15,16 +15,25 @@
 /******************************************************************************/
 /*                             Typedef prototype                              */
 /******************************************************************************/
+union uint16_u {
+	uint8_t uint8Val[2];
+    uint16_t uint16Val;
+};
+
 typedef struct {
-	float error_x;
-	float error_y;
-	float error_zoom;
-} motor_error_t;
+	union uint16_u speed_x;
+	union uint16_u speed_y;
+	union uint16_u speed_zoom;
+} motor_speed_t;
 
 
 /******************************************************************************/
 /*                             Function prototype                             */
 /******************************************************************************/
 void tsk_i2c();
+uint16_t get_speed_x();
+uint16_t get_speed_y();
+uint16_t get_speed_zoom();
+
 
 #endif /* APP_TSK_I2C_H_ */
