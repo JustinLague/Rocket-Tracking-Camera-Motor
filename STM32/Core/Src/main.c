@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -41,7 +42,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c2;
 I2C_HandleTypeDef hi2c3;
 
 TIM_HandleTypeDef htim3;
@@ -71,8 +71,6 @@ const osThreadAttr_t i2c_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for Change_speed_mutex */
-
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -83,7 +81,6 @@ static void MX_GPIO_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM8_Init(void);
 static void MX_TIM4_Init(void);
-static void MX_I2C2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_I2C3_Init(void);
 void StartDefaultTask(void *argument);
@@ -96,38 +93,11 @@ extern void tsk_i2c(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void start_motor(enum Motor_t motor) {
-	switch(motor){
-		case Motor_x:
-			HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-			TIM2->PSC = 0;
-			break;
-		case Motor_y:
-			HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
-			TIM4->PSC = 0;
-			break;
-		case Motor_zoom:
-			HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
-			TIM3->PSC = 0;
-			break;
-	}
-}
 
-void stop_motor(enum Motor_t motor) {
-	switch(motor){
-		case Motor_x:
-			HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_2);
-			break;
-		case Motor_y:
-			HAL_TIM_PWM_Stop(&htim4, TIM_CHANNEL_3);
-			break;
-		case Motor_zoom:
-			HAL_TIM_PWM_Stop(&htim8, TIM_CHANNEL_4);
-			break;
-	}
-}
-
-I2C_HandleTypeDef* get_hi2cl(){ return &hi2c2; }
+TIM_HandleTypeDef* get_htim3()  { return &htim3;}
+TIM_HandleTypeDef* get_htim4()  { return &htim4;}
+TIM_HandleTypeDef* get_htim8()  { return &htim8;}
+I2C_HandleTypeDef* get_hi2cl()  { return &hi2c3; }
 UART_HandleTypeDef* get_huart2(){ return &huart2; }
 
 /* USER CODE END 0 */
@@ -163,7 +133,6 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM8_Init();
   MX_TIM4_Init();
-  MX_I2C2_Init();
   MX_USART2_UART_Init();
   MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
@@ -174,8 +143,6 @@ int main(void)
 
   /* Init scheduler */
   osKernelInitialize();
-  /* Create the mutex(es) */
-  /* creation of Change_speed_mutex */
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -276,54 +243,6 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_I2C2_Init(void)
-{
-
-  /* USER CODE BEGIN I2C2_Init 0 */
-
-  /* USER CODE END I2C2_Init 0 */
-
-  /* USER CODE BEGIN I2C2_Init 1 */
-
-  /* USER CODE END I2C2_Init 1 */
-  hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00702681;
-  hi2c2.Init.OwnAddress1 = 70;
-  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c2.Init.OwnAddress2 = 0;
-  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
-  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_ENABLE;
-  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Analogue filter
-  */
-  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Digital filter
-  */
-  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN I2C2_Init 2 */
-
-  /* USER CODE END I2C2_Init 2 */
-
-}
-
-/**
   * @brief I2C3 Initialization Function
   * @param None
   * @retval None
@@ -340,7 +259,7 @@ static void MX_I2C3_Init(void)
   /* USER CODE END I2C3_Init 1 */
   hi2c3.Instance = I2C3;
   hi2c3.Init.Timing = 0x00702681;
-  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.OwnAddress1 = 70;
   hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
   hi2c3.Init.OwnAddress2 = 0;
@@ -610,14 +529,59 @@ static void MX_USART2_UART_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOC, MODE_ZOOM_1_Pin|MODE_ZOOM_2_Pin|MODE_ZOOM_3_Pin|DIR_MOTOR_ZOOM_Pin
+                          |DIR_MOTOR_X_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, MODE_Y_2_Pin|MODE_Y_1_Pin|DIR_MOTOR_Y_Pin|MODE_X_2_Pin
+                          |MODE_X_1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, MODE_X_3_Pin|MODE_Y_3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : MODE_ZOOM_1_Pin MODE_ZOOM_2_Pin MODE_ZOOM_3_Pin DIR_MOTOR_ZOOM_Pin
+                           DIR_MOTOR_X_Pin */
+  GPIO_InitStruct.Pin = MODE_ZOOM_1_Pin|MODE_ZOOM_2_Pin|MODE_ZOOM_3_Pin|DIR_MOTOR_ZOOM_Pin
+                          |DIR_MOTOR_X_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : MODE_Y_2_Pin MODE_Y_1_Pin DIR_MOTOR_Y_Pin MODE_X_2_Pin
+                           MODE_X_1_Pin */
+  GPIO_InitStruct.Pin = MODE_Y_2_Pin|MODE_Y_1_Pin|DIR_MOTOR_Y_Pin|MODE_X_2_Pin
+                          |MODE_X_1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : MODE_X_3_Pin MODE_Y_3_Pin */
+  GPIO_InitStruct.Pin = MODE_X_3_Pin|MODE_Y_3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB13 PB14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_13|GPIO_PIN_14;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

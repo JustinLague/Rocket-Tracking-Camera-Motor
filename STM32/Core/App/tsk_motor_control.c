@@ -18,85 +18,132 @@
 /******************************************************************************/
 /*                             Function implementation                        */
 /******************************************************************************/
-
-Timer_def_t timer_x;
-Timer_def_t timer_y;
-Timer_def_t timer_zoom;
-
-uint16_t actual_speed_x = 0;
-uint16_t actual_speed_y = 0;
-uint16_t actual_speed_zoom = 0;
-
-uint16_t acceleration = 2;
-
 void tsk_motor_control() {
-
-	start_motor(Motor_x);
-	start_motor(Motor_y);
-	start_motor(Motor_zoom);
+	start_motor_pwm(MOTOR_X);
+	start_motor_pwm(MOTOR_Y);
+	start_motor_pwm(MOTOR_ZOOM);
 
 	while(1){
-		update_motor_x();
-		update_motor_y();
-		update_motor_zoom();
+		update_motor(MOTOR_Y);
+		update_motor(MOTOR_ZOOM);
+		update_motor(MOTOR_X);
 		osDelay(2);
 	}
 }
 
-
-void update_motor_x() {
-	uint16_t desired_speed = get_speed_x();
-
-	if(actual_speed_x < desired_speed) {
-		actual_speed_x += acceleration;
-	} else if(actual_speed_x > desired_speed) {
-		actual_speed_x -= acceleration;
+void start_motor_pwm(enum motor_e motor) {
+	switch(motor){
+		case MOTOR_X:
+			HAL_TIM_PWM_Start(get_htim3(), TIM_CHANNEL_2);
+			TIM2->PSC = 0;
+			break;
+		case MOTOR_Y:
+			HAL_TIM_PWM_Start(get_htim4(), TIM_CHANNEL_3);
+			TIM3->PSC = 0;
+			break;
+		case MOTOR_ZOOM:
+			HAL_TIM_PWM_Start(get_htim8(), TIM_CHANNEL_4);
+			TIM4->PSC = 0;
+			break;
 	}
-
-	change_speed(&timer_x, actual_speed_x);
-	osKernelLock();
-		TIM3->ARR = timer_x.arr;
-		TIM3->PSC = timer_x.psc;
-		TIM3->CCR2 = (uint32_t) floor(timer_x.arr / 2);
-	osKernelUnlock();
 }
 
-void update_motor_y() {
-	uint16_t desired_speed = get_speed_y();
-	if(actual_speed_y < desired_speed) {
-		actual_speed_y += acceleration;
-	} else if (actual_speed_y > desired_speed) {
-		actual_speed_y -= acceleration;
+void stop_motor_pwm(enum motor_e motor) {
+	switch(motor){
+		case MOTOR_X:
+			HAL_TIM_PWM_Stop(get_htim3(), TIM_CHANNEL_2);
+			break;
+		case MOTOR_Y:
+			HAL_TIM_PWM_Stop(get_htim4(), TIM_CHANNEL_3);
+			break;
+		case MOTOR_ZOOM:
+			HAL_TIM_PWM_Stop(get_htim8(), TIM_CHANNEL_4);
+			break;
 	}
-
-	change_speed(&timer_y, actual_speed_y);
-
-	osKernelLock();
-		TIM4->ARR = timer_y.arr;
-		TIM4->PSC = timer_y.psc;
-		TIM4->CCR3 = (uint32_t) floor(timer_y.arr / 2);
-	osKernelUnlock();
 }
 
-void update_motor_zoom() {
-	uint16_t desired_speed = get_speed_zoom();
+void update_motor(enum motor_e _motor) {
+	motor_t* motor = get_motor(_motor);
 
-	if(actual_speed_zoom < desired_speed) {
-		actual_speed_zoom += acceleration;
-	} else if(actual_speed_zoom > desired_speed) {
-		actual_speed_zoom -= acceleration;
+	if(motor->actual_speed < motor->desired_speed.uint16Val) {
+		motor->actual_speed += motor->max_acceleration.uint16Val;
+	} else if(motor->actual_speed > motor->desired_speed.uint16Val) {
+		motor->actual_speed -= motor->max_acceleration.uint16Val;
 	}
 
-	change_speed(&timer_zoom, actual_speed_zoom / 2);
-
-	osKernelLock();
-		TIM8->ARR = timer_zoom.arr;
-		TIM8->PSC = timer_zoom.psc;
-		TIM8->CCR4 = (uint32_t) floor(timer_zoom.arr / 2);
-	osKernelUnlock();
+	update_pwm(motor);
+	update_mode(motor->mode, motor->type);
+	update_dir(motor->dir, motor->type);
 }
 
-void change_timer_def_for_freq(uint32_t desired_freq, Timer_def_t* timer_def) {
+void update_mode(uint8_t mode, enum motor_e _motor){
+
+	switch(_motor) {
+		case MOTOR_X:
+			HAL_GPIO_WritePin(MODE_X_1_GPIO_Port, MODE_X_1_Pin, (mode & 0b100) >> 2);
+			HAL_GPIO_WritePin(MODE_X_2_GPIO_Port, MODE_X_2_Pin, (mode & 0b010) >> 1);
+			HAL_GPIO_WritePin(MODE_X_3_GPIO_Port, MODE_X_3_Pin, mode & 0b001);
+			break;
+		case MOTOR_Y:
+			HAL_GPIO_WritePin(MODE_Y_1_GPIO_Port, MODE_Y_1_Pin, (mode & 0b100) >> 2);
+			HAL_GPIO_WritePin(MODE_Y_2_GPIO_Port, MODE_Y_2_Pin, (mode & 0b010) >> 1);
+			HAL_GPIO_WritePin(MODE_Y_3_GPIO_Port, MODE_Y_3_Pin, mode & 0b001);
+			break;
+		case MOTOR_ZOOM:
+			HAL_GPIO_WritePin(MODE_ZOOM_1_GPIO_Port, MODE_ZOOM_1_Pin, (mode & 0b100) >> 2);
+			HAL_GPIO_WritePin(MODE_ZOOM_2_GPIO_Port, MODE_ZOOM_2_Pin, (mode & 0b010) >> 1);
+			HAL_GPIO_WritePin(MODE_ZOOM_3_GPIO_Port, MODE_ZOOM_3_Pin, mode & 0b001);
+			break;
+	}
+}
+
+void update_dir(uint8_t dir, enum motor_e _motor) {
+	switch(_motor) {
+			case MOTOR_X:
+				HAL_GPIO_WritePin(DIR_MOTOR_X_GPIO_Port, DIR_MOTOR_X_Pin, dir);
+				break;
+			case MOTOR_Y:
+				HAL_GPIO_WritePin(DIR_MOTOR_Y_GPIO_Port, DIR_MOTOR_Y_Pin, dir);
+				break;
+			case MOTOR_ZOOM:
+				HAL_GPIO_WritePin(DIR_MOTOR_ZOOM_GPIO_Port, DIR_MOTOR_ZOOM_Pin, dir);
+				break;
+	}
+}
+
+void update_pwm(motor_t* motor) {
+
+	//need to find a way to compute mode
+	uint32_t pwm_frequency = (motor->actual_speed * (1 * 400)) / 60;
+
+	update_timer(pwm_frequency, &motor->timer);
+
+	switch(motor->type) {
+		case MOTOR_X:
+			osKernelLock();
+				TIM3->ARR = motor->timer.arr;
+				TIM3->PSC = motor->timer.psc;
+				TIM3->CCR2 = (uint32_t) floor(motor->timer.arr / 2);
+			osKernelUnlock();
+			break;
+		case MOTOR_Y:
+			osKernelLock();
+				TIM4->ARR = motor->timer.arr;
+				TIM4->PSC = motor->timer.psc;
+				TIM4->CCR3 = (uint32_t) floor(motor->timer.arr / 2);
+			osKernelUnlock();
+			break;
+		case MOTOR_ZOOM:
+			osKernelLock();
+				TIM8->ARR = motor->timer.arr;
+				TIM8->PSC = motor->timer.psc;
+				TIM8->CCR4 = (uint32_t) floor(motor->timer.arr / 2);
+			osKernelUnlock();
+			break;
+	}
+}
+
+void update_timer(uint32_t pwm_frequency, Timer_def_t* timer) {
 
 	//frequence du PCLK1
 	uint32_t f_clk = HAL_RCC_GetPCLK1Freq();
@@ -104,8 +151,8 @@ void change_timer_def_for_freq(uint32_t desired_freq, Timer_def_t* timer_def) {
 	// formule : https://deepbluembedded.com/stm32-pwm-example-timer-pwm-mode-tutorial/ apres je solve pour ARR
 	uint32_t arr = 0;
 
-	if(desired_freq != 0) {
-		arr = (f_clk / desired_freq);
+	if(pwm_frequency != 0) {
+		arr = (f_clk / pwm_frequency);
 	}
 	uint32_t psc = 0;
 
@@ -114,14 +161,8 @@ void change_timer_def_for_freq(uint32_t desired_freq, Timer_def_t* timer_def) {
 		arr = arr / psc;
 	}
 
-	timer_def->arr = arr - 1;
-	timer_def->psc = psc == 0 ? psc : psc - 1;
+	timer->arr = arr - 1;
+	timer->psc = psc == 0 ? psc : psc - 1;
 }
 
-// go to X rpm
-void change_speed(Timer_def_t* timer_def, uint16_t speed) {
-	//TODO: change "400" according to mode 1/mode * 400;
 
-	uint32_t freq = (speed * (4 * 400)) / 60;
-	change_timer_def_for_freq(freq, timer_def);
-}

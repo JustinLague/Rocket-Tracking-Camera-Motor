@@ -21,19 +21,26 @@ union uint16_u {
 };
 
 typedef struct {
-	union uint16_u speed_x;
-	union uint16_u speed_y;
-	union uint16_u speed_zoom;
-} motor_speed_t;
+   uint32_t arr;
+   uint32_t psc;
+} Timer_def_t;
+
+typedef struct {
+	enum motor_e type;
+	union uint16_u desired_speed;
+	union uint16_u max_acceleration;
+	uint16_t actual_speed;
+	uint8_t dir;
+	uint8_t mode;
+	Timer_def_t timer;
+} motor_t;
 
 
 /******************************************************************************/
 /*                             Function prototype                             */
 /******************************************************************************/
 void tsk_i2c();
-uint16_t get_speed_x();
-uint16_t get_speed_y();
-uint16_t get_speed_zoom();
-
+void init_motor(motor_t* motor);
+motor_t* get_motor(enum motor_e _motor);
 
 #endif /* APP_TSK_I2C_H_ */

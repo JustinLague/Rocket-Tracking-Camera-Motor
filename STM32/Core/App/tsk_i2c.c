@@ -17,19 +17,40 @@
 /******************************************************************************/
 /*                             Global variable                                */
 /******************************************************************************/
-motor_speed_t motor_speed;
+motor_t motor_x;
+motor_t motor_y;
+motor_t motor_zoom;
 
-osMutexId_t Change_speed_mutexHandle;
-const osMutexAttr_t Change_speed_mutex_attributes = {
-  .name = "Change_speed_mutex"
+osMutexId_t update_motor_mutexHandle;
+const osMutexAttr_t update_motor_mutex_attributes = {
+  .name = "UPDATE_speed_mutex"
 };
 
-uint8_t aRxBuffer[6];
+uint8_t aRxBuffer[7];
 uint8_t aTxBuffer[5];
 
 #define RXBUFFERSIZE                      (COUNTOF(aRxBuffer))
 #define TXBUFFERSIZE                      (COUNTOF(aTxBuffer))
 #define COUNTOF(__BUFFER__)   (sizeof(__BUFFER__) / sizeof(*(__BUFFER__)))
+
+#define UPDATE_SPEED_MOTORS 0x10
+#define UPDATE_SPEED_MOTOR_X 0x11
+#define UPDATE_SPEED_MOTOR_Y 0x12
+#define UPDATE_SPEED_MOTOR_ZOOM 0x13
+#define UPDATE_MAX_ACCELERATION_MOTORS 0x20
+#define UPDATE_MAX_ACCELERATION_X 0x21
+#define UPDATE_MAX_ACCELERATION_Y 0x22
+#define UPDATE_MAX_ACCELERATION_ZOOM 0x23
+#define UPDATE_DIRECTION_MOTORS 0x30
+#define UPDATE_DIRECTION_X 0x31
+#define UPDATE_DIRECTION_Y 0x32
+#define UPDATE_DIRECTION_ZOOM 0x33
+#define UPDATE_MODE_MOTORS 0x40
+#define UPDATE_MODE_X 0x41
+#define UPDATE_MODE_Y 0x42
+#define UPDATE_MODE_ZOOM 0x43
+
+
 
 uint8_t uwTransferRequested = 0;
 
@@ -40,11 +61,16 @@ uint8_t debug_buf[12];
 /******************************************************************************/
 
 void tsk_i2c() {
-	Change_speed_mutexHandle = osMutexNew(&Change_speed_mutex_attributes);
+	update_motor_mutexHandle = osMutexNew(&update_motor_mutex_attributes);
 
-	motor_speed.speed_x.uint16Val = 0;
-	motor_speed.speed_y.uint16Val = 0;
-	motor_speed.speed_zoom.uint16Val = 0;
+	init_motor(&motor_x);
+	motor_x.type = MOTOR_X;
+
+	init_motor(&motor_y);
+	motor_y.type = MOTOR_Y;
+
+	init_motor(&motor_zoom);
+	motor_zoom.type = MOTOR_ZOOM;
 
 	if(HAL_I2C_EnableListen_IT(get_hi2cl()) != HAL_OK) {
 		Error_Handler();
@@ -55,54 +81,138 @@ void tsk_i2c() {
 	}
 }
 
-uint16_t get_speed_x() {
-	uint16_t speed = 0;
-	osMutexAcquire(Change_speed_mutexHandle, 0);
 
-		speed = motor_speed.speed_x.uint16Val;
 
-	osMutexRelease(Change_speed_mutexHandle);
+void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle) {
+	uint8_t reg = aRxBuffer[0];
 
-	return speed;
-}
-
-uint16_t get_speed_y() {
-	uint16_t speed = 0;
-	osMutexAcquire(Change_speed_mutexHandle, 0);
-
-		speed = motor_speed.speed_y.uint16Val;
-
-	osMutexRelease(Change_speed_mutexHandle);
-
-	return speed;
-}
-
-uint16_t get_speed_zoom() {
-	uint16_t speed = 0;
-	osMutexAcquire(Change_speed_mutexHandle, 0);
-
-		speed = motor_speed.speed_zoom.uint16Val;
-
-	osMutexRelease(Change_speed_mutexHandle);
-
-	return speed;
-}
-
-void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *I2cHandle)
-{
-	//add mutex
-	if(aRxBuffer[0] == 0x10) {
-		osMutexAcquire(Change_speed_mutexHandle, 0);
-			motor_speed.speed_x.uint8Val[0] = aRxBuffer[1];
-			motor_speed.speed_x.uint8Val[1] = aRxBuffer[2];
-			motor_speed.speed_y.uint8Val[0] = aRxBuffer[3];
-			motor_speed.speed_y.uint8Val[1] = aRxBuffer[4];
-			motor_speed.speed_zoom.uint8Val[0] = aRxBuffer[5];
-			motor_speed.speed_zoom.uint8Val[1] = aRxBuffer[6];
-		osMutexRelease(Change_speed_mutexHandle);
+	//UPDATE speed of motors
+	if(reg == UPDATE_SPEED_MOTORS) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.desired_speed.uint8Val[0] = aRxBuffer[1];
+			motor_x.desired_speed.uint8Val[1] = aRxBuffer[2];
+			motor_y.desired_speed.uint8Val[0] = aRxBuffer[3];
+			motor_y.desired_speed.uint8Val[1] = aRxBuffer[4];
+			motor_zoom.desired_speed.uint8Val[0] = aRxBuffer[5];
+			motor_zoom.desired_speed.uint8Val[1] = aRxBuffer[6];
+		osMutexRelease(update_motor_mutexHandle);
 	}
-	//strcpy((char*) debug_buf, "SlaveRxCptl\r\n");
-	//HAL_UART_Transmit(get_huart2(), debug_buf, strlen((char*)debug_buf), HAL_MAX_DELAY);
+
+	//UPDATE speed of motor x
+	if(reg == UPDATE_SPEED_MOTOR_X) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.desired_speed.uint8Val[0] = aRxBuffer[1];
+			motor_x.desired_speed.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE speed of motor y
+	if(reg == UPDATE_SPEED_MOTOR_Y) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_y.desired_speed.uint8Val[0] = aRxBuffer[1];
+			motor_y.desired_speed.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE speed of motor zoom
+	if(reg == UPDATE_SPEED_MOTOR_ZOOM) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_zoom.desired_speed.uint8Val[0] = aRxBuffer[1];
+			motor_zoom.desired_speed.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	if(reg == UPDATE_MAX_ACCELERATION_MOTORS) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.max_acceleration.uint8Val[0] = aRxBuffer[1];
+			motor_x.max_acceleration.uint8Val[1] = aRxBuffer[2];
+			motor_y.max_acceleration.uint8Val[0] = aRxBuffer[3];
+			motor_y.max_acceleration.uint8Val[1] = aRxBuffer[4];
+			motor_zoom.max_acceleration.uint8Val[0] = aRxBuffer[5];
+			motor_zoom.max_acceleration.uint8Val[1] = aRxBuffer[6];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	if(reg == UPDATE_MAX_ACCELERATION_X) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.max_acceleration.uint8Val[0] = aRxBuffer[1];
+			motor_x.max_acceleration.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	if(reg == UPDATE_MAX_ACCELERATION_Y) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_y.max_acceleration.uint8Val[0] = aRxBuffer[1];
+			motor_y.max_acceleration.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	if(reg == UPDATE_MAX_ACCELERATION_ZOOM) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_zoom.max_acceleration.uint8Val[0] = aRxBuffer[1];
+			motor_zoom.max_acceleration.uint8Val[1] = aRxBuffer[2];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE direction of motors
+	if(reg == UPDATE_DIRECTION_MOTORS) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.dir = aRxBuffer[1];
+			motor_y.dir = aRxBuffer[2];
+			motor_zoom.dir = aRxBuffer[3];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE direction of motor x
+	if(reg == UPDATE_DIRECTION_X) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.dir = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE direction of motor y
+	if(reg == UPDATE_DIRECTION_Y) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_y.dir = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE direction of motor zoom
+	if(reg == UPDATE_DIRECTION_ZOOM) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_zoom.dir = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE mode of motors
+	if(reg == UPDATE_MODE_MOTORS) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.mode = aRxBuffer[1];
+			motor_y.mode = aRxBuffer[2];
+			motor_zoom.mode = aRxBuffer[3];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE mode of motor x
+	if(reg == UPDATE_MODE_X) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_x.mode = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE mode of motor y
+	if(reg == UPDATE_MODE_Y) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_y.mode = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
+
+	//UPDATE mode of motor zoom
+	if(reg == UPDATE_MODE_ZOOM) {
+		osMutexAcquire(update_motor_mutexHandle, 0);
+			motor_zoom.mode = aRxBuffer[1];
+		osMutexRelease(update_motor_mutexHandle);
+	}
 }
 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
@@ -117,7 +227,11 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		}
 	} else {
 		/*##- Put I2C peripheral in reception process ###########################*/
-		if (HAL_I2C_Slave_Seq_Receive_IT(get_hi2cl(), (uint8_t *)aRxBuffer, RXBUFFERSIZE, I2C_NEXT_FRAME) != HAL_OK) {
+		if (HAL_I2C_Slave_Seq_Receive_IT(get_hi2cl(), (uint8_t *)aRxBuffer, 1, I2C_NEXT_FRAME) != HAL_OK) {
+			/* Transfer error in reception process */
+			Error_Handler();
+		}
+		if (HAL_I2C_Slave_Seq_Receive_IT(get_hi2cl(), (uint8_t *)aTxBuffer, 1, I2C_NEXT_FRAME) != HAL_OK) {
 			/* Transfer error in reception process */
 			Error_Handler();
 		}
@@ -149,4 +263,36 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *I2cHandle)
 		HAL_UART_Transmit(get_huart2(), debug_buf, strlen((char*)debug_buf), HAL_MAX_DELAY);
 		Error_Handler();
 	}
+}
+
+void init_motor(motor_t* motor) {
+	motor->dir = 0;
+	motor->mode = 0;
+	motor->desired_speed.uint16Val = 0;
+	motor->max_acceleration.uint16Val = 2;
+	motor->actual_speed = 0;
+}
+
+motor_t* get_motor(enum motor_e _motor) {
+	motor_t* motor;
+
+	switch(_motor){
+			case MOTOR_X:
+				osMutexAcquire(update_motor_mutexHandle, 0);
+					motor = &motor_x;
+				osMutexRelease(update_motor_mutexHandle);
+				break;
+			case MOTOR_Y:
+				osMutexAcquire(update_motor_mutexHandle, 0);
+					motor = &motor_y;
+				osMutexRelease(update_motor_mutexHandle);
+				break;
+			case MOTOR_ZOOM:
+				osMutexAcquire(update_motor_mutexHandle, 0);
+					motor = &motor_zoom;
+				osMutexRelease(update_motor_mutexHandle);
+				break;
+		}
+
+	return motor;
 }

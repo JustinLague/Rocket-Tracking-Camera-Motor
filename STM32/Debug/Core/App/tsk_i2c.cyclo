@@ -1,8 +1,7 @@
-tsk_i2c.c:42:6:tsk_i2c	2
-tsk_i2c.c:58:10:get_speed_x	1
-tsk_i2c.c:69:10:get_speed_y	1
-tsk_i2c.c:80:10:get_speed_zoom	1
-tsk_i2c.c:91:6:HAL_I2C_SlaveRxCpltCallback	2
-tsk_i2c.c:108:6:HAL_I2C_AddrCallback	4
-tsk_i2c.c:127:6:HAL_I2C_ListenCpltCallback	2
-tsk_i2c.c:137:6:HAL_I2C_ErrorCallback	2
+tsk_i2c.c:63:6:tsk_i2c	2
+tsk_i2c.c:86:6:HAL_I2C_SlaveRxCpltCallback	17
+tsk_i2c.c:218:6:HAL_I2C_AddrCallback	5
+tsk_i2c.c:241:6:HAL_I2C_ListenCpltCallback	2
+tsk_i2c.c:251:6:HAL_I2C_ErrorCallback	2
+tsk_i2c.c:268:6:init_motor	1
+tsk_i2c.c:276:10:get_motor	5

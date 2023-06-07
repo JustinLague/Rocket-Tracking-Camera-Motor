@@ -11,24 +11,23 @@
 /******************************************************************************/
 /*                             Includes	                                      */
 /******************************************************************************/
-
+#include "tsk_i2c.h"
 /******************************************************************************/
 /*                             Typedef prototype                              */
 /******************************************************************************/
-typedef struct {
-   uint32_t arr;
-   uint32_t psc;
-} Timer_def_t;
+
 
 /******************************************************************************/
 /*                             Function prototype                             */
 /******************************************************************************/
 void tsk_motor_control();
-void update_motor_x();
-void update_motor_y();
-void update_motor_zoom();
-void change_timer_def_for_freq(uint32_t freq, Timer_def_t* timer_def);
-void change_speed(Timer_def_t* timer_def, uint16_t speed);
+void start_motor_pwm(enum motor_e motor);
+void stop_motor_pwm(enum motor_e motor);
+void update_motor(enum motor_e motor);
+void update_mode(uint8_t mode, enum motor_e motor);
+void update_dir(uint8_t dir, enum motor_e motor);
+void update_pwm(motor_t* motor);
+void update_timer(uint32_t pwm_frequency, Timer_def_t* timer);
 
 
 #endif /* APP_TSK_MOTOR_CONTROL_H_ */
